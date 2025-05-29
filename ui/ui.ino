@@ -15,7 +15,7 @@ const char* togglApiKey = "YOUR_TOGGL_API_KEY"; //PP
 const char* togglHost = "api.track.toggl.com";
 const char* togglPath = "/api/v9/me/time_entries?start_date=2025-05-01T00:00:00Z&end_date=2025-05-28T23:59:59Z";
 
-/*Change to Screen resolution*/
+/*Change to Screen resolution as per your display screen*/
 static const uint16_t screenWidth = 320;
 static const uint16_t screenHeight = 240;
 
@@ -75,13 +75,13 @@ String getTogglDuration() {
   client.setInsecure();
 
   HTTPClient https;
-  // const char* togglHost = "api.track.toggl.com";
-  // const char* togglPath = "/api/v9/me/time_entries";
+  //const char* togglHost = "api.track.toggl.com";
+  //const char* togglPath = "/api/v9/me/time_entries";
 
-  // https.begin(client, togglHost, 443, togglPath, true);
+  https.begin(client, togglHost, 443, togglPath, true);
 
-  String url = "https://api.track.toggl.com/api/v9/me/time_entries";
-  https.begin(client, url);  
+  //String url = "https://api.track.toggl.com/api/v9/me/time_entries";
+  //https.begin(client, url);  
 
   String auth = base64::encode(String(togglApiKey) + ":api_token");
   https.addHeader("Authorization", "Basic " + auth);
@@ -241,7 +241,6 @@ void loop() {
   String response = getTogglDuration();
   Serial.println("Raw JSON:");
   Serial.println(response);
-
   JSONVar timeEntries = JSON.parse(response);
 
   if (JSON.typeof(timeEntries) == "undefined") {
@@ -256,6 +255,10 @@ void loop() {
 
     time_t now = time(nullptr);
     struct tm* nowTm = localtime(&now);
+    int currentDay = nowTm->tm_yday;
+    int currentWeek = nowTm->tm_yday / 7;
+    int currentMonth = nowTm->tm_mon;
+    int currentYear = nowTm->tm_year;
 
     for (int i = 0; i < timeEntries.length(); i++) {
       JSONVar entry = timeEntries[i];
@@ -265,33 +268,20 @@ void loop() {
       time_t entryTime = parseISOTimestamp((const char*)entry["start"]);
       struct tm* entryTm = localtime(&entryTime);
 
-      // Compare day
-      bool sameDay = (entryTm->tm_mday == nowTm->tm_mday &&
-                      entryTm->tm_mon  == nowTm->tm_mon &&
-                      entryTm->tm_year == nowTm->tm_year);
+      int entryDay = entryTm->tm_yday;
+      int entryWeek = entryTm->tm_yday / 7;
+      int entryMonth = entryTm->tm_mon;
+      int entryYear = entryTm->tm_year;
 
-      // Compare month
-      bool sameMonth = (entryTm->tm_mon == nowTm->tm_mon &&
-                        entryTm->tm_year == nowTm->tm_year);
-
-      // Compare week (within 7 days difference)
-      double secondsDiff = difftime(now, entryTime);
-      bool sameWeek = (secondsDiff >= 0 && secondsDiff <= 7 * 24 * 3600);
-
-      if (sameDay)
+      if (entryDay == currentDay && entryYear == currentYear)
         dayDuration += duration;
 
-      if (sameWeek)
+      if (entryWeek == currentWeek && entryYear == currentYear)
         weekDuration += duration;
 
-      if (sameMonth)
+      if (entryMonth == currentMonth && entryYear == currentYear)
         monthDuration += duration;
     }
-
-    // Debug output
-    Serial.printf("Day duration: %d seconds\n", dayDuration);
-    Serial.printf("Week duration: %d seconds\n", weekDuration);
-    Serial.printf("Month duration: %d seconds\n", monthDuration);
 
     // Update day arc
     lv_arc_set_range(ui_DayBar, 0, 12);
@@ -301,22 +291,30 @@ void loop() {
     lv_bar_set_range(ui_WeekBar, 0, 36000);
     lv_bar_set_value(ui_WeekBar, weekDuration, LV_ANIM_ON);
 
-    // Format labels
+    // Update labels
     char dayStr[16], weekStr[16], monthStr[16];
-    snprintf(dayStr, sizeof(dayStr), "%02d:%02d Hrs", dayDuration / 3600, (dayDuration % 3600) / 60);
-    snprintf(weekStr, sizeof(weekStr), "%02d:%02d Hrs", weekDuration / 3600, (weekDuration % 3600) / 60);
-    snprintf(monthStr, sizeof(monthStr), "%02d:%02d Hrs", monthDuration / 3600, (monthDuration % 3600) / 60);
+    // Convert and format to HH:MM
+    int dayHours = dayDuration / 3600;
+    int dayMinutes = (dayDuration % 3600) / 60;
+
+    int weekHours = weekDuration / 3600;
+    int weekMinutes = (weekDuration % 3600) / 60;
+
+    int monthHours = monthDuration / 3600;
+    int monthMinutes = (monthDuration % 3600) / 60;
+
+    snprintf(dayStr, sizeof(dayStr), "%02d:%02d Hrs", dayHours, dayMinutes);
+    snprintf(weekStr, sizeof(weekStr), "%02d:%02d Hrs", weekHours, weekMinutes);
+    snprintf(monthStr, sizeof(monthStr), "%02d:%02d Hrs", monthHours, monthMinutes);
 
     lv_label_set_text(ui_dayHours, dayStr);
     lv_label_set_text(ui_weekHours, weekStr);
     lv_label_set_text(ui_monthHours, monthStr);
 
     updateDateLabel();
-
   } else {
     Serial.println("No entries found");
   }
 
   delay(5000);
 }
-
