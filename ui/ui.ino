@@ -5,26 +5,30 @@
 #include <Arduino_JSON.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
-#include <base64.h>  // Include if not already
+#include <base64.h>  
 
 const char* ssid = "YOUR_WIFI_NAME";
 const char* password = "YOUR_WIFI_PASSWORD";
 
-const char* togglApiKey = "YOUR_TOGGL_API_KEY"; //PP
+const char* togglApiKey = "YOUR_TOGGL_API_KEY"; 
 
 const char* togglHost = "api.track.toggl.com";
-const char* togglPath = "/api/v9/me/time_entries?start_date=2025-05-01T00:00:00Z&end_date=2025-05-28T23:59:59Z";
+const char* togglPath = "/api/v9/me/time_entries?start_date=2025-07-01T00:00:00Z&end_date=2025-07-28T23:59:59Z";
 
-/*Change to Screen resolution as per your display screen*/
+const char* togglPathCurrent = "api.track.toggl.com/api/v9/me/time_entries/current";
+
+/*Change to Screen resolution as per your display screen */
 static const uint16_t screenWidth = 320;
 static const uint16_t screenHeight = 240;
 
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf[screenWidth * screenHeight / 10];
 
-TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight); /* TFT instance */
+/* TFT instance */
+TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight); 
 
 #if LV_USE_LOG != 0
+
 /* Serial debugging */
 void my_print(const char* buf) {
   Serial.printf(buf);
@@ -78,10 +82,10 @@ String getTogglDuration() {
   //const char* togglHost = "api.track.toggl.com";
   //const char* togglPath = "/api/v9/me/time_entries";
 
-  https.begin(client, togglHost, 443, togglPath, true);
-
   //String url = "https://api.track.toggl.com/api/v9/me/time_entries";
   //https.begin(client, url);  
+
+  https.begin(client, togglHost, 443, togglPath, true);
 
   String auth = base64::encode(String(togglApiKey) + ":api_token");
   https.addHeader("Authorization", "Basic " + auth);
@@ -236,7 +240,7 @@ time_t timegm_utc(struct tm* tm) {
 
 void loop() {
   lv_timer_handler(); /* let the GUI do its work */
-  delay(5);
+  delay(2000);
 
   String response = getTogglDuration();
   Serial.println("Raw JSON:");
